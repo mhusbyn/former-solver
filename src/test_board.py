@@ -108,3 +108,84 @@ class TestGetBoardState:
         assert Board(initial_board).get_board_state() == initial_board
 
 
+class TestSelect:
+    @pytest.mark.parametrize("odd_row_out_index", range(0, 9))
+    def test_odd_row_out(self, odd_row_out_index: int):
+        odd_row_out = [Colour.BLUE] * WIDTH
+        common_row = [Colour.RED] * WIDTH
+
+        initial_board = [odd_row_out if i == odd_row_out_index else common_row for i in range(HEIGHT)]
+        board = Board(initial_board)
+
+        choices = board.get_choices()
+        board.select(next(p for p in choices if p.row == odd_row_out_index))
+
+        assert board.get_board_state() == [[None] * WIDTH] + [common_row] * (HEIGHT - 1)
+
+    def test_two_rows(self):
+        row_to_select = [Colour.BLUE] * WIDTH
+        common_row = [Colour.RED] * WIDTH
+
+        initial_board = [common_row] + [row_to_select] * 2 + [common_row] * (HEIGHT - 3)
+        board = Board(initial_board)
+
+        choices = board.get_choices()
+        board.select(next(p for p in choices if p.row == 1))
+
+        assert board.get_board_state() == [[None] * WIDTH] * 2 + [common_row] * (HEIGHT - 2)
+
+    def test_sandwich(self):
+        row_to_select = [Colour.BLUE] * WIDTH
+        common_row = [Colour.RED] * WIDTH
+
+        initial_board = [common_row] + [row_to_select] * (HEIGHT - 2) + [common_row]
+        board = Board(initial_board)
+
+        choices = board.get_choices()
+        board.select(next(p for p in choices if p.row == 1))
+
+        assert board.get_board_state() == [[None] * WIDTH] * (HEIGHT - 2) + [common_row] * 2
+
+    def test_complicated_board(self):
+        initial_board = [
+            [Colour.BLUE, Colour.RED, Colour.BLUE, Colour.BLUE, Colour.BLUE, Colour.GREEN, Colour.BLUE],
+            [Colour.RED, Colour.RED, Colour.RED, Colour.BLUE, Colour.BLUE, Colour.GREEN, Colour.GREEN],
+            [Colour.BLUE, Colour.RED, Colour.BLUE, Colour.BLUE, Colour.BLUE, Colour.BLUE, Colour.BLUE],
+            [Colour.BLUE, Colour.BLUE, Colour.BLUE, Colour.ORANGE, Colour.BLUE, Colour.BLUE, Colour.BLUE],
+            [Colour.BLUE, Colour.BLUE, Colour.ORANGE, Colour.ORANGE, Colour.ORANGE, Colour.BLUE, Colour.BLUE],
+            [Colour.BLUE, Colour.BLUE, Colour.BLUE, Colour.ORANGE, Colour.BLUE, Colour.BLUE, Colour.BLUE],
+            [Colour.BLUE, Colour.BLUE, Colour.BLUE, Colour.BLUE, Colour.BLUE, Colour.ORANGE, Colour.BLUE],
+            [Colour.BLUE, Colour.BLUE, Colour.BLUE, Colour.BLUE, Colour.ORANGE, Colour.BLUE, Colour.ORANGE],
+            [Colour.BLUE, Colour.BLUE, Colour.BLUE, Colour.BLUE, Colour.BLUE, Colour.ORANGE, Colour.BLUE],
+        ]
+
+        board = Board(initial_board)
+        choices = sorted(board.get_choices())
+        board.select(choices[2])  # Select the biggest blue
+
+        expected_state = [
+            [None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None],
+            [None, None, None, None, None, None, None],
+            [None, None, None, None, None, Colour.GREEN, None],
+            [None, None, None, None, None, Colour.GREEN, Colour.BLUE],
+            [None, Colour.RED, None, Colour.ORANGE, None, Colour.ORANGE, Colour.GREEN],
+            [Colour.BLUE, Colour.RED, Colour.RED, Colour.ORANGE, Colour.ORANGE, Colour.BLUE, Colour.ORANGE],
+            [Colour.RED, Colour.RED, Colour.ORANGE, Colour.ORANGE, Colour.ORANGE, Colour.ORANGE, Colour.BLUE],
+        ]
+        assert board.get_board_state() == expected_state
+
+
+class TestIsSolved:
+    def test_positive(self):
+        board = Board([[Colour.BLUE] * WIDTH] * HEIGHT)
+        board.select(next(iter(board.get_choices())))
+
+        assert board.is_solved() is True
+
+    def test_negative(self):
+        board = Board([[Colour.BLUE] * WIDTH] * (HEIGHT - 1) + [[Colour.RED] * WIDTH])
+        board.select(next(iter(board.get_choices())))
+
+        assert board.is_solved() is False
